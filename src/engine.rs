@@ -3,7 +3,7 @@ use crate::{
     default_emacs_keybindings,
     keybindings::{default_vi_insert_keybindings, default_vi_normal_keybindings, Keybindings},
     prompt::{PromptEditMode, PromptHistorySearch, PromptHistorySearchStatus, PromptViMode},
-    Prompt,
+    DefaultHighlighter, Highlighter, Prompt,
 };
 use crate::{history::History, line_buffer::LineBuffer};
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
 use crate::{EditCommand, EditMode, Signal, ViEngine};
 use crossterm::{
     cursor,
-    cursor::{position, MoveTo, MoveToColumn, RestorePosition, SavePosition},
+    cursor::{position, MoveLeft, MoveTo, MoveToColumn, RestorePosition, SavePosition},
     event::{poll, read, Event, KeyCode, KeyEvent, KeyModifiers},
     style::{Color, Print, ResetColor, SetForegroundColor},
     terminal::{self, Clear, ClearType},
@@ -71,6 +71,9 @@ pub struct Reedline {
 
     // Vi normal mode state engine
     vi_engine: ViEngine,
+
+    // Manage buffer highlights
+    highlighter: Box<dyn Highlighter>,
 }
 
 impl Default for Reedline {
@@ -101,7 +104,13 @@ impl Reedline {
             need_full_repaint: false,
             partial_command: None,
             vi_engine: ViEngine::new(),
+            highlighter: Box::new(DefaultHighlighter::default()),
         }
+    }
+
+    pub fn with_highlighter(mut self, external_commands: Vec<String>) -> Reedline {
+        self.highlighter = Box::new(DefaultHighlighter::new(external_commands));
+        self
     }
 
     pub fn with_history(
@@ -666,7 +675,8 @@ impl Reedline {
     /// Requires coordinates where the input buffer begins after the prompt.
     fn buffer_paint(&mut self, prompt_offset: (u16, u16)) -> Result<()> {
         let new_index = self.insertion_point().offset;
-
+        let insertion_line = self.insertion_line().to_string();
+        let offset = insertion_line.len() - new_index;
         // Repaint logic:
         //
         // Start after the prompt
@@ -676,15 +686,15 @@ impl Reedline {
         // Finally, reset the cursor to the saved position
 
         // stdout.queue(Print(&engine.line_buffer[..new_index]))?;
-        let insertion_line = self.insertion_line().to_string();
         self.stdout
             .queue(MoveTo(prompt_offset.0, prompt_offset.1))?;
-        self.stdout.queue(Print(&insertion_line[0..new_index]))?;
-        self.stdout.queue(SavePosition)?;
-        self.stdout.queue(Print(&insertion_line[new_index..]))?;
+        self.stdout.queue(Print(
+            self.highlighter
+                .highlight_external_command(&insertion_line)
+                .to_string(),
+        ))?;
         self.stdout.queue(Clear(ClearType::FromCursorDown))?;
-        self.stdout.queue(RestorePosition)?;
-
+        self.stdout.queue(MoveLeft(offset as u16))?;
         self.stdout.flush()?;
 
         Ok(())
