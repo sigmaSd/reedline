@@ -108,8 +108,8 @@ impl Reedline {
         }
     }
 
-    pub fn with_highlighter(mut self, external_commands: Vec<String>) -> Reedline {
-        self.highlighter = Box::new(DefaultHighlighter::new(external_commands));
+    pub fn with_highlighter(mut self, highlighter: Box<dyn Highlighter>) -> Reedline {
+        self.highlighter = highlighter;
         self
     }
 
@@ -689,9 +689,7 @@ impl Reedline {
         self.stdout
             .queue(MoveTo(prompt_offset.0, prompt_offset.1))?;
         self.stdout.queue(Print(
-            self.highlighter
-                .highlight_external_command(&insertion_line)
-                .to_string(),
+            self.highlighter.highlight(&insertion_line).to_string(),
         ))?;
         self.stdout.queue(Clear(ClearType::FromCursorDown))?;
         self.stdout.queue(MoveLeft(offset as u16))?;

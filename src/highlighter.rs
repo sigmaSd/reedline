@@ -1,6 +1,6 @@
 use {
     nu_ansi_term::{Color, Style},
-    std::{borrow::Cow, io::Write},
+    std::borrow::Cow,
 };
 
 pub static DEFAULT_BUFFER_MATCH_COLOR: Color = Color::Green;
@@ -8,7 +8,7 @@ pub static DEFAULT_BUFFER_NEUTRAL_COLOR: Color = Color::White;
 pub static DEFAULT_BUFFER_NOTMATCH_COLOR: Color = Color::Red;
 
 pub trait Highlighter {
-    fn highlight_external_command<'l>(&self, line: &'l str) -> Cow<'l, str>;
+    fn highlight<'l>(&self, line: &'l str) -> Cow<'l, str>;
 }
 
 pub struct DefaultHighlighter {
@@ -19,7 +19,7 @@ pub struct DefaultHighlighter {
 }
 
 impl Highlighter for DefaultHighlighter {
-    fn highlight_external_command<'l>(&self, line: &'l str) -> Cow<'l, str> {
+    fn highlight<'l>(&self, line: &'l str) -> Cow<'l, str> {
         if self
             .external_commands
             .clone()
