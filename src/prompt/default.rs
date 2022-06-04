@@ -1,9 +1,9 @@
 use crate::{Prompt, PromptEditMode, PromptHistorySearch, PromptHistorySearchStatus, PromptViMode};
 
-use {
-    chrono::Local,
-    std::{borrow::Cow, env},
-};
+#[cfg(feature = "chrono")]
+use chrono::Local;
+
+use std::{borrow::Cow, env};
 
 /// The default prompt indicator
 pub static DEFAULT_PROMPT_INDICATOR: &str = "〉";
@@ -25,8 +25,13 @@ impl Prompt for DefaultPrompt {
     }
 
     fn render_prompt_right(&self) -> Cow<str> {
+        #[cfg(feature = "chrono")]
         {
             Cow::Owned(get_now())
+        }
+        #[cfg(not(feature = "chrono"))]
+        {
+            Cow::Borrowed("<<< >>>")
         }
     }
 
@@ -93,6 +98,7 @@ fn get_working_dir() -> Result<String, std::io::Error> {
     Ok(new_path)
 }
 
+#[cfg(feature = "chrono")]
 fn get_now() -> String {
     let now = Local::now();
     format!("{:>}", now.format("%m/%d/%Y %I:%M:%S %p"))
